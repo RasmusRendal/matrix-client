@@ -1,5 +1,7 @@
+use std::sync::Arc;
+
 use slint::ComponentHandle;
-use tokio::sync::mpsc;
+use tokio::{runtime::Runtime, sync::mpsc};
 
 use crate::{client::build_matrix_client, password_login::start_password_window};
 
@@ -18,7 +20,7 @@ async fn try_login(mut channel: mpsc::Receiver<String>) -> matrix_sdk::Client {
     panic!("oh no");
 }
 
-pub fn start_select_homeserver_window() -> anyhow::Result<()> {
+pub fn start_select_homeserver_window(rt: Arc<Runtime>) -> anyhow::Result<()> {
     let ui = LoginWindow::new()?;
 
     let (tx, rx) = mpsc::channel::<String>(100);
@@ -41,7 +43,7 @@ pub fn start_select_homeserver_window() -> anyhow::Result<()> {
             .unwrap();
         println!("we have a client! {:?}", client);
         println!("Login type: {:?}", login_types);
-        start_password_window(client).unwrap();
+        start_password_window(rt, client).unwrap();
         ui.hide().unwrap();
     })?;
 

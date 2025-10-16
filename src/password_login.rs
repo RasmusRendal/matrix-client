@@ -1,4 +1,6 @@
-use tokio::sync::mpsc;
+use std::sync::Arc;
+
+use tokio::{runtime::Runtime, sync::mpsc};
 
 use crate::{client::save_matrix_session, main_window::run_main_window};
 
@@ -21,7 +23,7 @@ async fn try_login(
     panic!("oh no");
 }
 
-pub fn start_password_window(client: matrix_sdk::Client) -> anyhow::Result<()> {
+pub fn start_password_window(rt: Arc<Runtime>, client: matrix_sdk::Client) -> anyhow::Result<()> {
     let (tx, rx) = mpsc::channel::<(String, String)>(100);
     let password = PasswordLoginWindow::new()?;
 
@@ -48,7 +50,7 @@ pub fn start_password_window(client: matrix_sdk::Client) -> anyhow::Result<()> {
             .unwrap();
         println!("we have a client! {:?}", client);
         println!("Login type: {:?}", login_types);
-        run_main_window(client);
+        run_main_window(rt, client);
         password.hide().unwrap();
     })?;
     Ok(())

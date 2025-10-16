@@ -2,9 +2,19 @@
 import { Button, LineEdit, VerticalBox } from "std-widgets.slint";
 
 export component MainWindow inherits Window {
+    property<[string]> list-of-messages: [];
+
+    public function add-message(message: string) {
+        root.list-of-messages = [message];
+        // Oh, no list support :(
+        // root.list-of-messages.append(message);
+    }
     VerticalBox {
         Text {
             text: "You have logged in to a matrix homeserver";
+        }
+        for message in root.list-of-messages: message-list := Text {
+            text: message;
         }
     }
 }
