@@ -1,22 +1,29 @@
-// Prevent console window in addition to Slint window in Windows release builds when, e.g., starting the app via file manager. Ignored on other platforms.
-#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+mod client;
+mod homeserver_selector;
+mod main_window;
+mod password_login;
 
-use std::error::Error;
+use homeserver_selector::start_select_homeserver_window;
+
+use crate::{client::get_matrix_client, main_window::run_main_window};
 
 slint::include_modules!();
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let ui = AppWindow::new()?;
+fn main() -> anyhow::Result<()> {
+    start_select_homeserver_window()?;
+    // let startup_widow = StartupWindow::new();
+    // startup_window.show();
+    // slint::spawn_local(async || {
 
-    ui.on_request_increase_value({
-        let ui_handle = ui.as_weak();
-        move || {
-            let ui = ui_handle.unwrap();
-            ui.set_counter(ui.get_counter() + 1);
-        }
-    });
-
-    ui.run()?;
-
+    // })
+    // let client = get_matrix_client();
+    // let matrix_client = tokio::task::spawn_blocking(get_matrix_client)?;
+    // match matrix_client {
+    //     Some(client) => {
+    //         run_main_window(client);
+    //     }
+    //     None => ,
+    // }
+    slint::run_event_loop()?;
     Ok(())
 }

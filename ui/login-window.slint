@@ -1,0 +1,24 @@
+import { Button, LineEdit, VerticalBox } from "std-widgets.slint";
+
+export component LoginWindow inherits Window {
+    callback connect(homeserver_url: string);
+    VerticalBox {
+        Text {
+            text: "Please select a homeserver";
+        }
+
+        LineEdit {
+            placeholder-text: "Enter homeserver URL";
+            accepted(text) => {
+                root.connect(text)
+            }
+        }
+
+        Button {
+            text: "Login";
+            clicked => {
+                root.connect("rend.al");
+            }
+        }
+    }
+}

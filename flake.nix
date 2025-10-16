@@ -23,7 +23,7 @@
         in
         pkgs.mkShell {
           packages = with pkgs; [
-            fenix.packages.x86_64-linux.minimal.toolchain
+            fenix.packages.x86_64-linux.complete.toolchain
 
             # Slint
             eudev.out
@@ -36,7 +36,14 @@
             wayland
             xorg.libX11
             xorg.libXcursor
+
+            # matrix-sdk
+            openssl
+            pkg-config
+            sqlite
           ];
+
+          SLINT_LIVE_PREVIEW = "yes";
 
           LD_LIBRARY_PATH = "$LD_LIBRARY_PATH:${
             with pkgs;
@@ -45,6 +52,8 @@
               libxkbcommon
               fontconfig
               libGL
+              openssl
+              sqlite
             ]
           }";
         };

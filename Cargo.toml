@@ -4,7 +4,12 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-slint = "1.12.1"
+anyhow = "1.0.100"
+async-compat = "0.2.5"
+matrix-sdk = "0.14.0"
+# TODO: Remove before release, if that ever happens
+slint = { version = "1.13.1", features = ["live-preview"] }
+tokio = { version = "1.48.0", features = ["full"] }
 
 [build-dependencies]
-slint-build = "1.12.1"
+slint-build = "1.13.1"
