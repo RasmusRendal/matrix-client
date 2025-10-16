@@ -10,20 +10,23 @@ use crate::{client::get_matrix_client, main_window::run_main_window};
 slint::include_modules!();
 
 fn main() -> anyhow::Result<()> {
-    start_select_homeserver_window()?;
-    // let startup_widow = StartupWindow::new();
-    // startup_window.show();
-    // slint::spawn_local(async || {
-
-    // })
-    // let client = get_matrix_client();
-    // let matrix_client = tokio::task::spawn_blocking(get_matrix_client)?;
-    // match matrix_client {
-    //     Some(client) => {
-    //         run_main_window(client);
-    //     }
-    //     None => ,
-    // }
+    let startup_window = StartupWindow::new()?;
+    startup_window.show()?;
+    slint::spawn_local(async move {
+        let client = async_compat::Compat::new(get_matrix_client())
+            .await
+            .unwrap();
+        match client {
+            Some(client) => {
+                run_main_window(client);
+            }
+            None => {
+                start_select_homeserver_window().unwrap();
+            }
+        }
+        startup_window.hide().unwrap();
+    })
+    .unwrap();
     slint::run_event_loop()?;
     Ok(())
 }

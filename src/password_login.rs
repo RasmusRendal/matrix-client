@@ -1,5 +1,7 @@
 use tokio::sync::mpsc;
 
+use crate::{client::save_matrix_session, main_window::run_main_window};
+
 slint::include_modules!();
 
 async fn try_login(
@@ -35,15 +37,19 @@ pub fn start_password_window(client: matrix_sdk::Client) -> anyhow::Result<()> {
         },
     );
 
+    password.show()?;
     slint::spawn_local(async move {
         let client = async_compat::Compat::new(try_login(rx, client)).await;
+        async_compat::Compat::new(save_matrix_session(&client))
+            .await
+            .unwrap();
         let login_types = async_compat::Compat::new(client.matrix_auth().get_login_types())
             .await
             .unwrap();
         println!("we have a client! {:?}", client);
         println!("Login type: {:?}", login_types);
-        start_password_window(client).unwrap();
+        run_main_window(client);
+        password.hide().unwrap();
     })?;
-    password.show()?;
     Ok(())
 }

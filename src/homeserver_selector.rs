@@ -1,13 +1,13 @@
 use slint::ComponentHandle;
 use tokio::sync::mpsc;
 
-use crate::password_login::start_password_window;
+use crate::{client::build_matrix_client, password_login::start_password_window};
 
 slint::include_modules!();
 
 async fn try_login(mut channel: mpsc::Receiver<String>) -> matrix_sdk::Client {
     while let Some(homeserver_url) = channel.recv().await {
-        let c = matrix_sdk::Client::builder()
+        let c = build_matrix_client()
             .server_name_or_homeserver_url(homeserver_url)
             .build()
             .await;

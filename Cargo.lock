@@ -3832,6 +3832,8 @@ dependencies = [
  "anyhow",
  "async-compat",
  "matrix-sdk",
+ "serde",
+ "serde_json",
  "slint",
  "slint-build",
  "tokio",

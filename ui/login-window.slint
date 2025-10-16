@@ -7,7 +7,7 @@ export component LoginWindow inherits Window {
             text: "Please select a homeserver";
         }
 
-        LineEdit {
+        homeserver_edit := LineEdit {
             placeholder-text: "Enter homeserver URL";
             accepted(text) => {
                 root.connect(text)
@@ -17,7 +17,7 @@ export component LoginWindow inherits Window {
         Button {
             text: "Login";
             clicked => {
-                root.connect("rend.al");
+                root.connect(homeserver_edit.text);
             }
         }
     }
