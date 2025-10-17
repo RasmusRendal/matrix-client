@@ -1,20 +1,25 @@
 
-import { Button, LineEdit, VerticalBox } from "std-widgets.slint";
+import { Button, LineEdit, VerticalBox, HorizontalBox } from "std-widgets.slint";
+
+export struct MessageModel {
+    sender: string,
+    message: string,
+}
 
 export component MainWindow inherits Window {
-    property<[string]> list-of-messages: [];
+    in-out property<[MessageModel]> list-of-messages;
 
-    public function add-message(message: string) {
-        root.list-of-messages = [message];
-        // Oh, no list support :(
-        // root.list-of-messages.append(message);
-    }
     VerticalBox {
         Text {
             text: "You have logged in to a matrix homeserver";
         }
-        for message in root.list-of-messages: message-list := Text {
-            text: message;
+        for message in root.list-of-messages: message-list := HorizontalBox {
+            Text {
+                text: message.sender;
+            }
+            Text {
+                text: message.message;
+            }
         }
     }
 }
