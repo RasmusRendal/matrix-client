@@ -1,21 +1,16 @@
-use std::rc::Rc;
 use std::sync::Arc;
 
 use anyhow::Context;
 use matrix_sdk::{
     config::SyncSettings,
-    deserialized_responses::TimelineEvent,
-    ruma::{
-        OwnedRoomId, RoomId,
-        events::room::message::{RoomMessageEventContent, SyncRoomMessageEvent},
-    },
+    ruma::{OwnedRoomId, events::room::message::RoomMessageEventContent},
     stream::StreamExt,
 };
 use matrix_sdk_ui::{
     eyeball_im::{Vector, VectorDiff},
     timeline::{RoomExt, TimelineItem},
 };
-use slint::{Model as _, ModelRc, SharedString, ToSharedString as _, VecModel};
+use slint::{ModelRc, SharedString, ToSharedString as _, VecModel};
 use tokio::{runtime::Runtime, sync::Mutex, task::JoinHandle};
 
 slint::include_modules!();
@@ -24,6 +19,7 @@ slint::include_modules!();
 struct SendableModel {
     room_id: OwnedRoomId,
     messages: Vector<Arc<TimelineItem>>,
+    complete: bool,
 }
 
 impl From<SendableModel> for VisibleRoomModel {
@@ -47,6 +43,7 @@ impl From<SendableModel> for VisibleRoomModel {
         VisibleRoomModel {
             room_id: val.room_id.to_shared_string(),
             messages: ModelRc::new(VecModel::from_slice(&messages)),
+            complete: val.complete,
         }
     }
 }
@@ -84,6 +81,7 @@ async fn construct_room_view(
         *lock = Some(SendableModel {
             room_id: room_id.clone(),
             messages: timeline_items,
+            complete: false,
         });
     }
     let timeline2 = timeline.clone();

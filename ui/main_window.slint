@@ -1,5 +1,5 @@
 
-import { Button, LineEdit, VerticalBox, HorizontalBox, TextEdit } from "std-widgets.slint";
+import { Button, LineEdit, VerticalBox, HorizontalBox, TextEdit, ScrollView } from "std-widgets.slint";
 
 export struct MessageModel {
     sender: string,
@@ -13,6 +13,7 @@ export struct RoomModel {
 
 export struct VisibleRoomModel {
     room_id: string,
+    complete: bool,
     messages: [MessageModel],
 }
 
@@ -39,6 +40,7 @@ export component MainWindow inherits Window {
 
     HorizontalBox {
         RoomSelector {
+            max-width: 300px;
             list-of-rooms: list-of-rooms;
             show_room(id) => {
                 root.show_room(id);
@@ -48,12 +50,27 @@ export component MainWindow inherits Window {
             Text {
                 text: "You have logged in to a matrix homeserver";
             }
-            for message in root.visible-room.messages: message-list := HorizontalBox {
-                Text {
-                    text: message.sender;
+            ScrollView {
+                // viewport-height: 300px;
+                // viewport-width: 300px;
+                // height: 200px;
+                // width: 200px;
+                VerticalBox {
+                    for message in root.visible-room.messages: message-list := HorizontalBox {
+                        Text {
+                            text: message.sender;
+                        }
+                        Text {
+                            text: message.message;
+                            wrap: word-wrap;
+                        }
+                    }
                 }
-                Text {
-                    text: message.message;
+
+                scrolled() => {
+                    if self.viewport-y > -200px && root.visible-room.complete == false {
+                        debug("viewport-y: ", self.viewport-y);
+                    }
                 }
             }
 
