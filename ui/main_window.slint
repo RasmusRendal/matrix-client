@@ -31,6 +31,31 @@ component RoomSelector {
     }
 }
 
+component Message {
+    in property<MessageModel> message;
+
+    HorizontalBox {
+        Rectangle {
+            HorizontalBox {
+                Text {
+                    text: "\{root.message.sender}:";
+                }
+            }
+        }
+        Rectangle {
+            background: #b5b5b5;
+            border-radius: 5px;
+            width: 100%;
+            HorizontalBox {
+                Text {
+                    text: root.message.message;
+                    wrap: word-wrap;
+                }
+            }
+        }
+    }
+}
+
 export component MainWindow inherits Window {
     callback show_room(room_id: string);
     callback send_message(message: string);
@@ -38,46 +63,49 @@ export component MainWindow inherits Window {
     in-out property<[RoomModel]> list-of-rooms;
     in-out property<VisibleRoomModel> visible-room;
 
+    min-height: 300px;
+    min-width: 800px;
+
     HorizontalBox {
-        RoomSelector {
+        ScrollView {
             max-width: 300px;
-            list-of-rooms: list-of-rooms;
-            show_room(id) => {
-                root.show_room(id);
+            HorizontalBox {
+            RoomSelector {
+                list-of-rooms: list-of-rooms;
+                show_room(id) => {
+                    root.show_room(id);
+                }
+            }
             }
         }
-        VerticalBox {
-            Text {
-                text: "You have logged in to a matrix homeserver";
-            }
-            ScrollView {
-                // viewport-height: 300px;
-                // viewport-width: 300px;
-                // height: 200px;
-                // width: 200px;
-                VerticalBox {
-                    for message in root.visible-room.messages: message-list := HorizontalBox {
-                        Text {
-                            text: message.sender;
+        Rectangle {
+            background: #d5d5d5;
+            border-radius: 5px;
+            VerticalBox {
+                ScrollView {
+                    // viewport-height: 300px;
+                    // viewport-width: 300px;
+                    // height: 200px;
+                    // width: 200px;
+                    VerticalBox {
+                        alignment: start;
+                        for message in root.visible-room.messages: message-list := Message {
+                            message: message;
                         }
-                        Text {
-                            text: message.message;
-                            wrap: word-wrap;
+                    }
+
+                    scrolled() => {
+                        if self.viewport-y > -200px && root.visible-room.complete == false {
+                            debug("viewport-y: ", self.viewport-y);
                         }
                     }
                 }
 
-                scrolled() => {
-                    if self.viewport-y > -200px && root.visible-room.complete == false {
-                        debug("viewport-y: ", self.viewport-y);
+                editor := LineEdit {
+                    accepted(text) => {
+                        root.send_message(text);
+                        editor.text = "";
                     }
-                }
-            }
-
-            editor := LineEdit {
-                accepted(text) => {
-                    root.send_message(text);
-                    editor.text = "";
                 }
             }
         }
