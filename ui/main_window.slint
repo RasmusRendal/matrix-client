@@ -6,19 +6,50 @@ export struct MessageModel {
     message: string,
 }
 
-export component MainWindow inherits Window {
-    in-out property<[MessageModel]> list-of-messages;
+export struct RoomModel {
+    id: string,
+}
+
+export struct VisibleRoomModel {
+    messages: [MessageModel],
+}
+
+component RoomSelector {
+    callback show_room(room_id: string);
+    in-out property<[RoomModel]> list-of-rooms;
 
     VerticalBox {
-        Text {
-            text: "You have logged in to a matrix homeserver";
-        }
-        for message in root.list-of-messages: message-list := HorizontalBox {
-            Text {
-                text: message.sender;
+        alignment: start;
+        for room in root.list-of-rooms: room-list := Button { text: room.id; clicked => {
+            root.show_room(room.id);
+        }}
+    }
+}
+
+export component MainWindow inherits Window {
+    callback show_room(room_id: string);
+
+    in-out property<[RoomModel]> list-of-rooms;
+    in-out property<VisibleRoomModel> visible-room;
+
+    HorizontalBox {
+        RoomSelector {
+            list-of-rooms: list-of-rooms;
+            show_room(id) => {
+                root.show_room(id);
             }
+        }
+        VerticalBox {
             Text {
-                text: message.message;
+                text: "You have logged in to a matrix homeserver";
+            }
+            for message in root.visible-room.messages: message-list := HorizontalBox {
+                Text {
+                    text: message.sender;
+                }
+                Text {
+                    text: message.message;
+                }
             }
         }
     }

@@ -2,7 +2,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use matrix_sdk::{config::SyncSettings, ruma::events::room::message::SyncRoomMessageEvent};
-use slint::{Model as _, ModelRc, ToSharedString as _, VecModel};
+use slint::{Model as _, ModelRc, SharedString, ToSharedString as _, VecModel};
 use tokio::runtime::Runtime;
 
 slint::include_modules!();
@@ -10,9 +10,6 @@ slint::include_modules!();
 pub fn run_main_window(rt: Arc<Runtime>, client: matrix_sdk::Client) {
     let window = MainWindow::new().unwrap();
     let weak: slint::Weak<MainWindow> = window.as_weak();
-
-    // let model = ModelRc::new(VecModel::from_slice(&[]));
-    // window.set_list_of_messages(model);
 
     client.add_event_handler(|ev: SyncRoomMessageEvent| async move {
         if let Some(event) = ev.as_original() {
@@ -22,13 +19,28 @@ pub fn run_main_window(rt: Arc<Runtime>, client: matrix_sdk::Client) {
                 message: body.into(),
             };
             weak.upgrade_in_event_loop(move |window2| {
-                let mut messages: Vec<MessageModel> =
-                    window2.get_list_of_messages().iter().collect();
+                let mut room_model: VisibleRoomModel = window2.get_visible_room();
+                let mut messages: Vec<MessageModel> = room_model.messages.iter().collect();
                 messages.push(message);
-                window2.set_list_of_messages(ModelRc::new(VecModel::from(messages)));
+                room_model.messages = ModelRc::new(VecModel::from(messages));
+                window2.set_visible_room(room_model);
+                // window2.set_visible_rooms(ModelRc::new(VecModel::from(messages)));
             })
             .unwrap();
         }
+    });
+
+    let v: Vec<_> = client
+        .rooms()
+        .iter()
+        .map(|r| RoomModel {
+            id: r.room_id().to_string().into(),
+        })
+        .collect();
+    window.set_list_of_rooms(ModelRc::new(VecModel::from(v)));
+
+    window.on_show_room(|sp: SharedString| {
+        println!("{sp}");
     });
 
     rt.spawn(async move {
