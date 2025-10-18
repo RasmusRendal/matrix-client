@@ -1,5 +1,5 @@
 
-import { Button, LineEdit, VerticalBox, HorizontalBox } from "std-widgets.slint";
+import { Button, LineEdit, VerticalBox, HorizontalBox, TextEdit } from "std-widgets.slint";
 
 export struct MessageModel {
     sender: string,
@@ -12,6 +12,7 @@ export struct RoomModel {
 }
 
 export struct VisibleRoomModel {
+    room_id: string,
     messages: [MessageModel],
 }
 
@@ -31,6 +32,7 @@ component RoomSelector {
 
 export component MainWindow inherits Window {
     callback show_room(room_id: string);
+    callback send_message(message: string);
 
     in-out property<[RoomModel]> list-of-rooms;
     in-out property<VisibleRoomModel> visible-room;
@@ -52,6 +54,13 @@ export component MainWindow inherits Window {
                 }
                 Text {
                     text: message.message;
+                }
+            }
+
+            editor := LineEdit {
+                accepted(text) => {
+                    root.send_message(text);
+                    editor.text = "";
                 }
             }
         }
