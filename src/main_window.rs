@@ -1,34 +1,121 @@
 use std::rc::Rc;
 use std::sync::Arc;
 
-use matrix_sdk::{config::SyncSettings, ruma::events::room::message::SyncRoomMessageEvent};
+use anyhow::Context;
+use matrix_sdk::{
+    config::SyncSettings,
+    deserialized_responses::TimelineEvent,
+    ruma::{OwnedRoomId, RoomId, events::room::message::SyncRoomMessageEvent},
+    stream::StreamExt,
+};
+use matrix_sdk_ui::{
+    eyeball_im::{Vector, VectorDiff},
+    timeline::{RoomExt, TimelineItem},
+};
 use slint::{Model as _, ModelRc, SharedString, ToSharedString as _, VecModel};
-use tokio::runtime::Runtime;
+use tokio::{runtime::Runtime, sync::Mutex, task::JoinHandle};
 
 slint::include_modules!();
 
+struct SendableModel {
+    messages: Vector<Arc<TimelineItem>>,
+}
+
+impl From<SendableModel> for VisibleRoomModel {
+    fn from(val: SendableModel) -> Self {
+        let messages: Vec<MessageModel> = val
+            .messages
+            .into_iter()
+            .filter_map(|e| {
+                if let Some(e) = e.as_event()
+                    && let Some(message_content) = e.content().as_message()
+                {
+                    Some(MessageModel {
+                        message: message_content.body().to_shared_string(),
+                        sender: e.sender().to_shared_string(),
+                    })
+                } else {
+                    None
+                }
+            })
+            .collect();
+        VisibleRoomModel {
+            messages: ModelRc::new(VecModel::from_slice(&messages)),
+        }
+    }
+}
+
+fn apply_changes(
+    timeline: Arc<std::sync::Mutex<Vector<Arc<TimelineItem>>>>,
+    main_window: MainWindow,
+    changes: Vec<VectorDiff<Arc<TimelineItem>>>,
+) {
+    let mut lock = timeline.lock().unwrap();
+    for change in changes {
+        change.apply(&mut *lock);
+    }
+
+    main_window.set_visible_room(
+        SendableModel {
+            messages: lock.clone(),
+        }
+        .into(),
+    );
+}
+
+async fn construct_room_view(
+    weak: slint::Weak<MainWindow>,
+    timeline: Arc<std::sync::Mutex<Vector<Arc<TimelineItem>>>>,
+    stream_handle: Arc<Mutex<Option<JoinHandle<()>>>>,
+    client: matrix_sdk::Client,
+    room_id: OwnedRoomId,
+) -> anyhow::Result<()> {
+    println!("Building the room view");
+    let room = client
+        .get_room(&room_id)
+        .context("Tried to get a non-existent room")?;
+    let roomtimeline = room.timeline().await.context("Failed to get timeline")?;
+    roomtimeline.paginate_forwards(20).await?;
+    let (timeline_items, mut stream) = roomtimeline.subscribe().await;
+    {
+        let mut lock = timeline.lock().unwrap();
+        *lock = timeline_items.clone();
+    }
+    weak.upgrade_in_event_loop(move |w| {
+        w.set_visible_room(
+            SendableModel {
+                messages: timeline_items,
+            }
+            .into(),
+        );
+    })
+    .unwrap();
+    {
+        let mut lock = stream_handle.lock().await;
+        if let Some(handle) = lock.take() {
+            handle.abort();
+        }
+        // *lock = None;
+        let handle = tokio::spawn(async move {
+            while let Some(messages) = stream.next().await {
+                let timeline = timeline.clone();
+                weak.upgrade_in_event_loop(move |main_window| {
+                    apply_changes(timeline.clone(), main_window, messages);
+                })
+                .unwrap();
+            }
+        });
+        *lock = Some(handle);
+    }
+    println!("got the timeline: {roomtimeline:?}");
+    Ok(())
+}
+
 pub fn run_main_window(rt: Arc<Runtime>, client: matrix_sdk::Client) {
     let window = MainWindow::new().unwrap();
-    let weak: slint::Weak<MainWindow> = window.as_weak();
-
-    client.add_event_handler(|ev: SyncRoomMessageEvent| async move {
-        if let Some(event) = ev.as_original() {
-            let body = event.content.body().to_owned();
-            let message = MessageModel {
-                sender: event.sender.to_shared_string(),
-                message: body.into(),
-            };
-            weak.upgrade_in_event_loop(move |window2| {
-                let mut room_model: VisibleRoomModel = window2.get_visible_room();
-                let mut messages: Vec<MessageModel> = room_model.messages.iter().collect();
-                messages.push(message);
-                room_model.messages = ModelRc::new(VecModel::from(messages));
-                window2.set_visible_room(room_model);
-                // window2.set_visible_rooms(ModelRc::new(VecModel::from(messages)));
-            })
-            .unwrap();
-        }
-    });
+    let stream_handle: Arc<Mutex<Option<JoinHandle<()>>>> = Arc::new(Mutex::new(None));
+    let timeline: Arc<std::sync::Mutex<Vector<Arc<TimelineItem>>>> =
+        Arc::new(std::sync::Mutex::new(Vector::new()));
 
     let v: Vec<_> = client
         .rooms()
@@ -39,8 +126,29 @@ pub fn run_main_window(rt: Arc<Runtime>, client: matrix_sdk::Client) {
         .collect();
     window.set_list_of_rooms(ModelRc::new(VecModel::from(v)));
 
-    window.on_show_room(|sp: SharedString| {
-        println!("{sp}");
+    let weak = window.as_weak();
+    let client2 = client.clone();
+    let rt2 = rt.clone();
+    window.on_show_room(move |sp: SharedString| {
+        let room_id: OwnedRoomId = sp.parse().unwrap();
+        let weak = weak.clone();
+        let client2 = client2.clone();
+        let rt2 = rt2.clone();
+        let stream_handle = stream_handle.clone();
+        let timeline = timeline.clone();
+        slint::spawn_local(async move {
+            rt2.spawn(async_compat::Compat::new(construct_room_view(
+                weak.clone(),
+                timeline.clone(),
+                stream_handle.clone(),
+                client2,
+                room_id,
+            )))
+            .await
+            .unwrap()
+            .unwrap();
+        })
+        .unwrap();
     });
 
     rt.spawn(async move {
