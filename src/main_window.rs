@@ -122,6 +122,10 @@ pub fn run_main_window(rt: Arc<Runtime>, client: matrix_sdk::Client) {
         .iter()
         .map(|r| RoomModel {
             id: r.room_id().to_string().into(),
+            name: r
+                .name()
+                .unwrap_or(r.room_id().to_string())
+                .to_shared_string(),
         })
         .collect();
     window.set_list_of_rooms(ModelRc::new(VecModel::from(v)));

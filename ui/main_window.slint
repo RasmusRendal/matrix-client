@@ -8,6 +8,7 @@ export struct MessageModel {
 
 export struct RoomModel {
     id: string,
+    name: string,
 }
 
 export struct VisibleRoomModel {
@@ -20,9 +21,11 @@ component RoomSelector {
 
     VerticalBox {
         alignment: start;
-        for room in root.list-of-rooms: room-list := Button { text: room.id; clicked => {
-            root.show_room(room.id);
-        }}
+        for room in root.list-of-rooms: room-list := Button {
+           text: room.name;
+           clicked => {
+             root.show_room(room.id);
+           }}
     }
 }
 
