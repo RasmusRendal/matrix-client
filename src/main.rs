@@ -7,7 +7,6 @@ mod warning_dialog;
 use std::sync::Arc;
 
 use homeserver_selector::start_select_homeserver_window;
-use tokio::runtime::Runtime;
 
 use crate::{client::get_matrix_client, main_window::run_main_window};
 

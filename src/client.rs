@@ -1,3 +1,5 @@
+//! Utilities for starting a matrix client session, and saving it
+
 use std::path::PathBuf;
 
 use anyhow::Context as _;
@@ -23,8 +25,15 @@ struct FullSession {
     sync_token: Option<String>,
 }
 
+#[allow(clippy::expect_used)]
 fn store_dir() -> PathBuf {
-    PathBuf::from("/home/rasmus/.rasmus-matrix-client/")
+    let config_home = match std::env::var("XDG_CONFIG_HOME") {
+        Ok(config_home) => PathBuf::from(config_home),
+        Err(_) => std::env::home_dir()
+            .expect("Could not find user home dir")
+            .join(".config"),
+    };
+    config_home.join("rasmus-matrix-client")
 }
 
 fn get_session_file() -> anyhow::Result<PathBuf> {
