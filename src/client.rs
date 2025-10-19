@@ -1,8 +1,4 @@
-use std::{
-    fs::File,
-    io::{BufReader, Read as _},
-    path::PathBuf,
-};
+use std::path::PathBuf;
 
 use anyhow::Context as _;
 use matrix_sdk::authentication::matrix::MatrixSession;

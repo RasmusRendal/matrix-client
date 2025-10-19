@@ -1,0 +1,24 @@
+import { Button, LineEdit, VerticalBox, HorizontalBox, TextEdit, ScrollView } from "std-widgets.slint";
+
+export component WarningDialog inherits Window {
+    in property<string> message;
+    callback close();
+
+    always-on-top: true;
+    title: "Rasmus' Matrix Client has encountered an error";
+
+    VerticalBox {
+        Text {
+            text: message;
+        }
+        Button {
+            text: "Close";
+            clicked => {
+                root.close();
+            }
+        }
+    }
+
+    
+    
+}

@@ -13,6 +13,8 @@ use matrix_sdk_ui::{
 use slint::{ModelRc, SharedString, ToSharedString as _, VecModel};
 use tokio::{runtime::Runtime, sync::Mutex, task::JoinHandle};
 
+use crate::warning_dialog::{async_run_or_error, run_or_error};
+
 slint::include_modules!();
 
 #[derive(Clone)]
@@ -143,16 +145,18 @@ pub fn run_main_window(rt: Arc<Runtime>, client: matrix_sdk::Client) {
         let stream_handle = stream_handle.clone();
         let model2 = model2.clone();
         slint::spawn_local(async move {
-            rt2.spawn(async_compat::Compat::new(construct_room_view(
-                weak.clone(),
-                model2.clone(),
-                stream_handle.clone(),
-                client2,
-                room_id,
-            )))
-            .await
-            .unwrap()
-            .unwrap();
+            async_run_or_error(async move || {
+                rt2.spawn(async_compat::Compat::new(construct_room_view(
+                    weak.clone(),
+                    model2.clone(),
+                    stream_handle.clone(),
+                    client2,
+                    room_id,
+                )))
+                .await??;
+                Ok(())
+            })
+            .await;
         })
         .unwrap();
     });
@@ -161,18 +165,34 @@ pub fn run_main_window(rt: Arc<Runtime>, client: matrix_sdk::Client) {
     let client2 = client.clone();
     let rt2 = rt.clone();
     window.on_send_message(move |message: SharedString| {
-        let room_id = model2.lock().unwrap().as_ref().unwrap().room_id.clone();
+        let model2 = model2.clone();
         let client2 = client2.clone();
+        let Some(room_id) = run_or_error(move || {
+            Ok(model2
+                .lock()
+                .ok()
+                .context("Could not lock model")?
+                .as_ref()
+                .context("No room loaded")?
+                .room_id
+                .clone())
+        }) else {
+            return;
+        };
         rt2.spawn(async move {
             let room_id = room_id.clone();
             let client2 = client2.clone();
 
-            client2
-                .get_room(&room_id)
-                .unwrap()
-                .send(RoomMessageEventContent::text_plain(message))
-                .await
-                .unwrap();
+            async_run_or_error(async move || {
+                client2
+                    .get_room(&room_id)
+                    .unwrap()
+                    .send(RoomMessageEventContent::text_plain(message))
+                    .await
+                    .context("Failed sending message")?;
+                Ok(())
+            })
+            .await;
         });
     });
 

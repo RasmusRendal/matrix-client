@@ -2,6 +2,7 @@ mod client;
 mod homeserver_selector;
 mod main_window;
 mod password_login;
+mod warning_dialog;
 
 use std::sync::Arc;
 
